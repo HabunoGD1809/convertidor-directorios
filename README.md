@@ -5,7 +5,7 @@ Una aplicación de escritorio construida con Python y Tkinter que permite visual
 <table>
   <tr>
     <td><img src="preview.png" alt="Vista previa de la aplicación" width="400"></td>
-    <td><img src="preview2.png" alt="Vista previa de ajustes" width="400"></td>
+    <td><img src="preview2.png" alt="Vista previa de ajustes" width="150"></td>
   </tr>
 </table>
 
@@ -113,9 +113,9 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 
 - A la comunidad de Python y Tkinter
 - A los usuarios que proporcionan feedback valioso
-...
+- ...
 
 ## 📬 Contacto
 
-HabunoGD1809 - [@Franklin_1809](https://x.com/Franklin_1809) - franklinjoel@gmail.com
+HabunoGD1809 - [@Franklin_1809](https://x.com/Franklin_1809) 🐦 - franklinjoel1809@gmail.com 📧
 
