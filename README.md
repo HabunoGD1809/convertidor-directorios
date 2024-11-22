@@ -4,8 +4,8 @@ Una aplicación de escritorio construida con Python y Tkinter que permite visual
 
 <table>
   <tr>
-    <td><img src="preview.png" alt="Vista previa de la aplicación" width="650"></td>
-    <td><img src="preview2.png" alt="Vista previa de ajustes" width="150"></td>
+    <td><img src="preview.png" alt="Vista previa de la aplicación" width="600"></td>
+    <td><img src="preview2.png" alt="Vista previa de ajustes" width="200"></td>
   </tr>
 </table>
 
