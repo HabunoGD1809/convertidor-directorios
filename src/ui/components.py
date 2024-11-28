@@ -1,7 +1,7 @@
+import re
 import tkinter as tk
 from tkinter import ttk
-from tkinter import font as tkfont
-import pyperclip
+from venv import logger
 
 class UIComponents:
     def __init__(self, parent, styles, callbacks):
@@ -116,7 +116,6 @@ class UIComponents:
         
         return botones_frame
 
-# dfdsfdf
     def create_preview_section(self):
         """Crea la sección de vista previa/editor"""
         preview_container = ttk.LabelFrame(
@@ -135,8 +134,9 @@ class UIComponents:
             "💡 Aquí puedes:",
             "  • Ver la estructura generada desde un directorio",
             "  • Pegar una estructura existente en formato markdown",
-            "  • Editar manualmente la estructura usando los botones de abajo",
-            "  • Usar espacios (4 espacios o 1 tab) para indicar niveles"
+            "  • Editar manualmente la estructura usando los botones o atajos de teclado (Alt+U, Alt+E, Alt+L, Tab)",
+            "  • Usar espacios (4 espacios o 1 tab) para indicar niveles",
+            "  • Usar Ctrl+Z para deshacer y Ctrl+Y para rehacer"
         ]
         
         for inst in instructions:
@@ -162,10 +162,11 @@ class UIComponents:
         symbols_frame = ttk.LabelFrame(toolbar, text="Insertar Símbolos", style='TLabelframe')
         symbols_frame.pack(fill=tk.X, padx=5, pady=5)
         
+        # Crear botones con atajos
         toolbar_buttons = [
-            ("└── Último", "Insertar símbolo de último elemento", "    └── "),
-            ("├── Elemento", "Insertar símbolo de elemento", "    ├── "),
-            ("│   Línea", "Insertar línea vertical", "    │   "),
+            ("└── Último (Alt+U)", "Insertar símbolo de último elemento", "    └── "),
+            ("├── Elemento (Alt+E)", "Insertar símbolo de elemento", "    ├── "),
+            ("│   Línea (Alt+L)", "Insertar línea vertical", "    │   "),
             ("↹ Tab", "Insertar indentación (4 espacios)", "    ")
         ]
         
@@ -174,118 +175,197 @@ class UIComponents:
                 symbols_frame,
                 text=text,
                 style='Custom.TButton',
-                width=12
+                width=20
             )
             btn.pack(side=tk.LEFT, padx=2, pady=2)
             btn.configure(command=lambda s=symbol: self._insert_symbol(s))
             self._create_tooltip(btn, tooltip)
         
         # Área de texto
-        preview_text = tk.Text(
+        self.preview_text = tk.Text(
             text_frame,
-            **self.styles.get_text_widget_config()
+            **self.styles.get_text_widget_config(),
+            undo=True,          # Habilitar la funcionalidad de deshacer
+            maxundo=50,         # Máximo número de acciones para deshacer
+            autoseparators=True # Crear separadores automáticamente
         )
         
+        # Configurar atajos de teclado
+        self.preview_text.bind('<Alt-u>', lambda e: self._insert_symbol("    └── "))
+        self.preview_text.bind('<Alt-e>', lambda e: self._insert_symbol("    ├── "))
+        self.preview_text.bind('<Alt-l>', lambda e: self._insert_symbol("    │   "))
+        self.preview_text.bind('<Tab>', self._handle_tab)
+        self.preview_text.bind('<Control-z>', self._handle_undo)
+        self.preview_text.bind('<Control-y>', self._handle_redo)
+        self.preview_text.bind('<Control-Z>', self._handle_redo) 
+        
         # Scrollbars
-        y_scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=preview_text.yview)
-        x_scrollbar = ttk.Scrollbar(text_frame, orient="horizontal", command=preview_text.xview)
-        preview_text.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
+        y_scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=self.preview_text.yview)
+        x_scrollbar = ttk.Scrollbar(text_frame, orient="horizontal", command=self.preview_text.xview)
+        self.preview_text.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
         
         # Empaquetar elementos
         y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-        preview_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.preview_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         # Configurar placeholder
-        preview_text.insert('1.0', self.preview_placeholder)
-        preview_text.configure(fg='gray')
+        self.preview_text.insert('1.0', self.preview_placeholder)
+        self.preview_text.configure(fg='gray')
         
-        def on_focus_in(event):
-            if preview_text.get('1.0', 'end-1c') == self.preview_placeholder:
-                preview_text.delete('1.0', tk.END)
-                preview_text.configure(fg=self.styles.current_theme['preview_fg'])
-                
-            # Verificar portapapeles
-            try:
-                from src.utils.file_handler import FileHandler
-                clipboard_content = self.parent.clipboard_get()
-                if clipboard_content and FileHandler.validar_estructura_markdown(clipboard_content):
-                    self.show_message(
-                        "📋 Detectado contenido válido en el portapapeles. " +
-                        "Usa Ctrl+V o clic derecho > Pegar para usarlo",
-                        "info",
-                        5000
-                    )
-            except Exception:
-                pass
-        
-        def on_focus_out(event):
-            if not preview_text.get('1.0', 'end-1c').strip():
-                preview_text.configure(fg='gray')
-                preview_text.insert('1.0', self.preview_placeholder)
-        
-        def on_key_release(event):
-            # Validar estructura cuando el usuario escribe
-            try:
-                from src.utils.file_handler import FileHandler
-                content = preview_text.get('1.0', 'end-1c').strip()
-                if content and content != self.preview_placeholder:
-                    if not FileHandler.validar_estructura_markdown(content):
-                        self.show_message(
-                            "⚠️ La estructura actual no es válida. Usa los botones de símbolos para un formato correcto.",
-                            "warning"
-                        )
-            except Exception:
-                pass
-        
-        preview_text.bind('<FocusIn>', on_focus_in)
-        preview_text.bind('<FocusOut>', on_focus_out)
-        preview_text.bind('<KeyRelease>', on_key_release)
+        # Configurar eventos
+        self.preview_text.bind('<FocusIn>', self._on_focus_in)
+        self.preview_text.bind('<FocusOut>', self._on_focus_out)
+        self.preview_text.bind('<KeyRelease>', self._on_key_release)
         
         # Crear menú contextual mejorado
-        self._create_context_menu(preview_text)
+        self._create_context_menu(self.preview_text)
         
-        return preview_container, preview_text
+        return preview_container, self.preview_text
+
+    def _handle_undo(self, event):
+        """Maneja el evento de deshacer"""
+        try:
+            self.preview_text.edit_undo()
+        except tk.TclError:  
+            self.show_message("No hay más acciones para deshacer", "info", 1000)
+        return "break"
+
+    def _handle_redo(self, event):
+        """Maneja el evento de rehacer"""
+        try:
+            self.preview_text.edit_redo()
+        except tk.TclError:  
+            self.show_message("No hay más acciones para rehacer", "info", 1000)
+        return "break"
+
+    def _handle_tab(self, event):
+        """Maneja el evento de la tecla Tab"""
+        self._insert_symbol("    ")
+        return "break"
 
     def _insert_symbol(self, symbol):
         """Inserta un símbolo en la posición actual del cursor"""
-        if hasattr(self, 'preview_text'):
-            if self.preview_text.get('1.0', 'end-1c') == self.preview_placeholder:
-                self.preview_text.delete('1.0', tk.END)
-                self.preview_text.configure(fg=self.styles.current_theme['preview_fg'])
+        if not hasattr(self, 'preview_text'):
+            return
             
-            # Obtener posición actual y línea
+        # Limpiar placeholder si existe
+        if self.preview_text.get('1.0', 'end-1c').strip() == self.preview_placeholder:
+            self.preview_text.delete('1.0', tk.END)
+            self.preview_text.configure(fg=self.styles.current_theme['preview_fg'])
+        
+        try:
+            # Marcar el inicio de la operación para undo
+            self.preview_text.edit_separator()
+            
+            # Obtener posición actual del cursor y datos de la línea
             cursor_pos = self.preview_text.index(tk.INSERT)
-            line_start = cursor_pos.split('.')[0] + '.0'
+            line_num = int(cursor_pos.split('.')[0])
+            line_start = f"{line_num}.0"
+            line_end = f"{line_num}.end"
+            current_line = self.preview_text.get(line_start, line_end)
             
-            # Si no estamos al inicio de la línea y no hay un salto de línea antes,
-            # agregar un salto de línea
-            if self.preview_text.get(line_start, cursor_pos).strip():
-                symbol = '\n' + symbol
+            # Obtener la indentación actual
+            current_indent = len(re.match(r'^\s*', current_line).group())
             
-            self.preview_text.insert(tk.INSERT, symbol)
-            self.preview_text.focus_set()  # Mantener el foco en el área de texto
+            # Preparar el nuevo contenido
+            if symbol.strip() == "":  # Si es solo Tab
+                new_content = " " * 4
+            else:
+                # Para otros símbolos, mantener la indentación actual
+                stripped_symbol = symbol.lstrip()
+                new_content = " " * current_indent + stripped_symbol
+            
+            # Insertar el contenido
+            if current_line.strip():  # Si la línea actual no está vacía
+                self.preview_text.insert(line_end, f"\n{new_content}")
+                self.preview_text.mark_set(tk.INSERT, f"{line_num + 1}.end")
+            else:  # Si la línea está vacía
+                self.preview_text.delete(line_start, line_end)
+                self.preview_text.insert(line_start, new_content)
+                self.preview_text.mark_set(tk.INSERT, f"{line_num}.end")
+            
+            # Marcar el final de la operación para undo
+            self.preview_text.edit_separator()
+            
+            # Asegurar que la línea insertada sea visible
+            self.preview_text.see(tk.INSERT)
+            self.preview_text.focus_set()
+            
+        except Exception as e:
+            logger.error(f"Error insertando símbolo: {e}")
+            self.show_message("⚠️ Error al insertar símbolo", "error")
+
+    def _on_focus_in(self, event):
+        """Maneja el evento de focus in"""
+        if self.preview_text.get('1.0', 'end-1c').strip() == self.preview_placeholder:
+            self.preview_text.delete('1.0', tk.END)
+            self.preview_text.configure(fg=self.styles.current_theme['preview_fg'])
+        
+        # Verificar portapapeles
+        try:
+            from src.utils.file_handler import FileHandler
+            clipboard_content = self.parent.clipboard_get()
+            if clipboard_content and FileHandler.validar_estructura_markdown(clipboard_content):
+                self.show_message(
+                    "📋 Detectado contenido válido en el portapapeles. " +
+                    "Usa Ctrl+V o clic derecho > Pegar para usarlo",
+                    "info",
+                    5000
+                )
+        except Exception:
+            pass
+
+    def _on_focus_out(self, event):
+        """Maneja el evento de focus out"""
+        if not self.preview_text.get('1.0', 'end-1c').strip():
+            self.preview_text.configure(fg='gray')
+            self.preview_text.insert('1.0', self.preview_placeholder)
+
+    def _on_key_release(self, event):
+        """Maneja el evento de liberación de tecla"""
+        try:
+            from src.utils.file_handler import FileHandler
+            content = self.preview_text.get('1.0', 'end-1c').strip()
+            if content and content != self.preview_placeholder:
+                if not FileHandler.validar_estructura_markdown(content):
+                    self.show_message(
+                        "⚠️ La estructura actual no es válida. Usa los botones de símbolos para un formato correcto.",
+                        "warning"
+                    )
+        except Exception:
+            pass
 
     def _create_context_menu(self, text_widget):
         """Crea un menú contextual mejorado para el widget de texto"""
         menu = tk.Menu(self.parent, tearoff=0)
         
-        menu.add_command(label="📋 Copiar", command=lambda: text_widget.event_generate("<<Copy>>"))
-        menu.add_command(label="📋 Pegar", command=lambda: self._paste_with_validation(text_widget))
-        menu.add_command(label="✂️ Cortar", command=lambda: text_widget.event_generate("<<Cut>>"))
+        # Añadir comandos de edición básicos
+        menu.add_command(label="↩️ Deshacer (Ctrl+Z)", 
+                        command=lambda: self._handle_undo(None))
+        menu.add_command(label="↪️ Rehacer (Ctrl+Y)", 
+                        command=lambda: self._handle_redo(None))
         menu.add_separator()
-        menu.add_command(label="Seleccionar Todo", command=lambda: text_widget.tag_add("sel", "1.0", "end"))
+        menu.add_command(label="📋 Copiar", 
+                        command=lambda: text_widget.event_generate("<<Copy>>"))
+        menu.add_command(label="📋 Pegar", 
+                        command=lambda: self._paste_with_validation(text_widget))
+        menu.add_command(label="✂️ Cortar", 
+                        command=lambda: text_widget.event_generate("<<Cut>>"))
+        menu.add_separator()
+        menu.add_command(label="Seleccionar Todo", 
+                        command=lambda: text_widget.tag_add("sel", "1.0", "end"))
         menu.add_separator()
         
         # Submenú para insertar símbolos
         symbols_menu = tk.Menu(menu, tearoff=0)
-        symbols_menu.add_command(label="└── Último elemento", 
+        symbols_menu.add_command(label="└── Último elemento (Alt+U)", 
                                command=lambda: self._insert_symbol("    └── "))
-        symbols_menu.add_command(label="├── Elemento", 
+        symbols_menu.add_command(label="├── Elemento (Alt+E)", 
                                command=lambda: self._insert_symbol("    ├── "))
-        symbols_menu.add_command(label="│   Línea vertical", 
+        symbols_menu.add_command(label="│   Línea vertical (Alt+L)", 
                                command=lambda: self._insert_symbol("    │   "))
-        symbols_menu.add_command(label="    Indentación", 
+        symbols_menu.add_command(label="    Indentación (Tab)", 
                                command=lambda: self._insert_symbol("    "))
         menu.add_cascade(label="Insertar Símbolo", menu=symbols_menu)
         
@@ -302,6 +382,7 @@ class UIComponents:
             clipboard_content = self.parent.clipboard_get()
             
             if clipboard_content:
+                text_widget.edit_separator()  # Marca inicio para undo
                 if FileHandler.validar_estructura_markdown(clipboard_content):
                     text_widget.event_generate("<<Paste>>")
                     self.show_message("✅ Estructura pegada correctamente", "success")
@@ -313,9 +394,10 @@ class UIComponents:
                         "⚠️ La estructura pegada podría no ser válida. Revisa el formato.",
                         "warning"
                     )
+                text_widget.edit_separator()  # Marca fin para undo
         except Exception:
             text_widget.event_generate("<<Paste>>")
-    # cambio no
+
     def _get_preview_content(self):
             """Obtiene el contenido real del preview, ignorando el placeholder"""
             if hasattr(self, 'preview_text'):
@@ -335,7 +417,7 @@ class UIComponents:
         except Exception:
             pass
         return False
-# dsfdfd
+
     def create_action_buttons(self):
         """Crea los botones de acción"""
         acciones_frame = ttk.Frame(self.parent, style='TFrame')

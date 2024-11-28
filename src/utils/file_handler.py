@@ -85,30 +85,128 @@ class FileHandler:
     @staticmethod
     def validar_estructura_markdown(estructura: str) -> bool:
         """Valida que la estructura esté en formato markdown válido"""
-        lineas = estructura.split('\n')
-        nivel_actual = 0
-        patron_arbol = r'^(\s*)(├──|└──|│\s+)?\s*(.+?)/?$'
-        
-        for linea in lineas:
-            if not linea.strip():
-                continue
-                
-            if not re.match(patron_arbol, linea):
-                return False
-                
-            # Validar la indentación y símbolos
-            espacios = len(re.match(r'^\s*', linea).group())
-            if espacios % 4 != 0:
-                return False
-                
-            nuevo_nivel = espacios // 4
-            if nuevo_nivel > nivel_actual + 1:
-                return False
-                
-            nivel_actual = nuevo_nivel
+        try:
+            lineas = estructura.split('\n')
+            nivel_actual = -1
+            nivel_anterior = -1
             
-        return True
-    
+            for linea in lineas:
+                if not linea.strip():
+                    continue
+                    
+                # Calcular nivel basado en la indentación
+                indentacion = len(re.match(r'^\s*', linea).group())
+                nivel = indentacion // 4
+                
+                # Validar formato básico (debe empezar con ├──, └── o │)
+                if not re.match(r'^(\s*)(├── |└── |│   )', linea):
+                    logger.info(f"Formato inválido en línea: {linea}")
+                    return False
+                
+                # Validar que el nivel no salte más de uno a la vez
+                if nivel > nivel_anterior + 1:
+                    logger.info(f"Salto de nivel inválido: {nivel} > {nivel_anterior + 1}")
+                    return False
+                    
+                # Actualizar niveles
+                nivel_anterior = nivel
+                
+                # Validar el contenido después de los símbolos
+                contenido = re.search(r'[├└]── (.+)$', linea)
+                if contenido and not contenido.group(1).strip():
+                    logger.info("Contenido vacío después de los símbolos")
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validando estructura: {str(e)}")
+            return False
+        
+    @staticmethod
+    def guardar_estructura(filename: str, estructura: str, usar_iconos: bool):
+        """Guarda la estructura en un archivo"""
+        try:
+            fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            encabezado = f"""# Estructura de Directorios
+            Generado por: ConvertidorDirectorios
+            Fecha: {fecha_actual}
+            Modo: {"Iconos" if usar_iconos else "Árbol"}
+
+            ```
+            {estructura}
+            ```
+            """
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(encabezado)
+                
+        except Exception as e:
+            logger.error(f"Error al guardar estructura: {str(e)}")
+            raise
+
+    @staticmethod
+    def _get_file_icon(extension: str) -> str:
+        """Retorna el icono apropiado según la extensión del archivo"""
+        extension = extension.lower()
+        icons = {
+        # Documentos
+        '.txt': '📝',
+        '.doc': '📘',
+        '.docx': '📘',
+        '.pdf': '📕',
+        '.md': '📋',
+        
+        # Código
+        '.py': '🐍',
+        '.js': '📜',
+        '.html': '🌐',
+        '.css': '🎨',
+        '.json': '📦',
+        '.xml': '📦',
+        '.dart': '💠',
+        '.java': '☕',
+        '.cpp': '⚡',
+        '.c': '⚡',
+        '.php': '🐘',
+        '.rb': '💎',        # Ruby
+        '.swift': '🕊️',    # Swift
+        '.ts': '📘',        # TypeScript
+        '.go': '🐹',        # Go
+        '.rs': '🦀',        # Rust
+        '.kt': '🔷',        # Kotlin
+        '.sql': '🗃️',       # SQL
+        
+        # Imágenes
+        '.jpg': '🖼️',
+        '.jpeg': '🖼️',
+        '.png': '🖼️',
+        '.gif': '🖼️',
+        '.svg': '🖼️',
+        
+        # Otros
+        '.zip': '📦',
+        '.rar': '📦',
+        '.7z': '📦',
+        '.exe': '⚙️',
+        '.bat': '⚙️',
+        '.sh': '⚙️',
+        '.mp3': '🎵',
+        '.wav': '🎵',
+        '.mp4': '🎥',
+        '.avi': '🎥',
+        '.gitignore': '📋',
+        '.env': '🔒',
+        
+        # Configuración y misceláneos
+        '.yml': '⚙️',       # YAML config
+        '.yaml': '⚙️',
+        '.ini': '⚙️',       # Configuración
+        '.log': '🗒️',       # Logs
+        '.db': '🗄️'         # Bases de datos
+    }
+        
+        return icons.get(extension, '📄')
+
 class Nodo:
     def __init__(self, nombre, es_directorio=False):
         self.nombre = nombre
@@ -199,87 +297,3 @@ class Nodo:
         except Exception as e:
             logger.error(f"Error al crear estructura: {str(e)}")
             raise
-
-    @staticmethod
-    def guardar_estructura(filename: str, estructura: str, usar_iconos: bool):
-        """Guarda la estructura en un archivo"""
-        try:
-            fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            encabezado = f"""# Estructura de Directorios
-            Generado por: ConvertidorDirectorios
-            Fecha: {fecha_actual}
-            Modo: {"Iconos" if usar_iconos else "Árbol"}
-
-            ```
-            {estructura}
-            ```
-            """
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write(encabezado)
-                
-        except Exception as e:
-            logger.error(f"Error al guardar estructura: {str(e)}")
-            raise
-
-    @staticmethod
-    def _get_file_icon(extension: str) -> str:
-        """Retorna el icono apropiado según la extensión del archivo"""
-        extension = extension.lower()
-        icons = {
-        # Documentos
-        '.txt': '📝',
-        '.doc': '📘',
-        '.docx': '📘',
-        '.pdf': '📕',
-        '.md': '📋',
-        
-        # Código
-        '.py': '🐍',
-        '.js': '📜',
-        '.html': '🌐',
-        '.css': '🎨',
-        '.json': '📦',
-        '.xml': '📦',
-        '.dart': '💠',
-        '.java': '☕',
-        '.cpp': '⚡',
-        '.c': '⚡',
-        '.php': '🐘',
-        '.rb': '💎',        # Ruby
-        '.swift': '🕊️',    # Swift
-        '.ts': '📘',        # TypeScript
-        '.go': '🐹',        # Go
-        '.rs': '🦀',        # Rust
-        '.kt': '🔷',        # Kotlin
-        '.sql': '🗃️',       # SQL
-        
-        # Imágenes
-        '.jpg': '🖼️',
-        '.jpeg': '🖼️',
-        '.png': '🖼️',
-        '.gif': '🖼️',
-        '.svg': '🖼️',
-        
-        # Otros
-        '.zip': '📦',
-        '.rar': '📦',
-        '.7z': '📦',
-        '.exe': '⚙️',
-        '.bat': '⚙️',
-        '.sh': '⚙️',
-        '.mp3': '🎵',
-        '.wav': '🎵',
-        '.mp4': '🎥',
-        '.avi': '🎥',
-        '.gitignore': '📋',
-        '.env': '🔒',
-        
-        # Configuración y misceláneos
-        '.yml': '⚙️',       # YAML config
-        '.yaml': '⚙️',
-        '.ini': '⚙️',       # Configuración
-        '.log': '🗒️',       # Logs
-        '.db': '🗄️'         # Bases de datos
-    }
-        
-        return icons.get(extension, '📄')
