@@ -47,39 +47,41 @@ class FileHandler:
         """Genera estructura estilo árbol"""
         if exclude_patterns is None:
             exclude_patterns = ['.git', '__pycache__', '.pytest_cache', '.venv', 'node_modules']
-            
+                
         result = []
         try:
             base_path = Path(dir_path)
             if not any(base_path.iterdir()):
                 return "└── Directorio vacío"
-                
+                    
             items = sorted(
                 [item for item in base_path.iterdir() 
-                 if not any(pattern in str(item) for pattern in exclude_patterns)],
+                if not any(pattern in str(item) for pattern in exclude_patterns)],
                 key=lambda x: (not x.is_dir(), x.name.lower())
             )
-            
+                
             for i, item in enumerate(items):
                 is_last = i == len(items) - 1
-                indent = prefix + ("└── " if is_last else "├── ")
-                
+                current_prefix = prefix + ("└── " if is_last else "├── ")
+                    
                 if item.is_file():
-                    result.append(f"{indent}{item.name}")
+                    result.append(f"{current_prefix}{item.name}")
                 elif item.is_dir():
-                    result.append(f"{indent}{item.name}/")
-                    new_prefix = prefix + ("    " if is_last else "│   ")
+                    result.append(f"{current_prefix}{item.name}/")
+                    # Mejorar la consistencia del prefijo para subdirectorios
+                    next_prefix = prefix + ("    " if is_last else "│   ")
                     subdir_content = FileHandler.generar_estructura_arbol(
-                        item, level + 1, new_prefix, exclude_patterns
+                        item, level + 1, next_prefix, exclude_patterns
                     )
                     if subdir_content:
+                        # Asegurar que las líneas verticales se alineen correctamente
                         result.append(subdir_content)
-                        
+                            
             return "\n".join(result)
         except Exception as e:
             logger.error(f"Error generando estructura árbol: {str(e)}")
             raise
-
+    
     @staticmethod
     def validar_estructura_markdown(estructura: str) -> bool:
         """Valida que la estructura esté en formato markdown válido"""
@@ -106,6 +108,13 @@ class FileHandler:
             nivel_actual = nuevo_nivel
             
         return True
+    
+class Nodo:
+    def __init__(self, nombre, es_directorio=False):
+        self.nombre = nombre
+        self.es_directorio = es_directorio
+        self.hijos = []
+        self.nivel = 0
 
     @staticmethod
     def crear_estructura(estructura: str, base_path: str, usar_iconos: bool):
@@ -114,55 +123,79 @@ class FileHandler:
         """
         if not estructura.strip():
             raise ValueError("La estructura está vacía")
-            
-        if not FileHandler.validar_estructura_markdown(estructura):
-            raise ValueError("La estructura no está en formato markdown válido")
-            
+                
         try:
             lineas = [l for l in estructura.split('\n') if l.strip()]
-            base_path = Path(base_path)
-            nivel_actual = 0
-            estructura_actual = {'path': base_path, 'children': {}}
-            path_stack = [estructura_actual]
+            raiz = Nodo("root", True)
+            ultimo_nodo = {-1: raiz}  # Diccionario de último nodo por nivel
+            
+            logger.info("Construyendo árbol de directorios...")
             
             for linea in lineas:
-                # Obtener nivel de indentación
-                espacios = len(re.match(r'^\s*', linea).group())
-                nivel = espacios // 4
+                # Calculo de nivel basado en la cantidad de caracteres de indentación
+                # incluidos los caracteres especiales
+                nivel = 0
+                for char in linea:
+                    if char in ['│', ' ']:
+                        nivel += 1
+                    else:
+                        break
+                nivel = nivel // 4  # Convertir a nivel real
                 
-                # Obtener nombre y tipo (archivo/directorio)
-                match = re.search(r'[├└]──\s*(.+?)/?$', linea)
+                logger.info(f"Procesando línea: [{linea}]")
+                logger.info(f"Nivel calculado: {nivel}")
+                
+                match = re.search(r'[├└]──\s*(.+?)$', linea)
                 if not match:
+                    logger.info(f"No se encontró patrón en la línea: [{linea}]")
                     continue
                     
                 nombre = match.group(1).strip()
                 es_directorio = nombre.endswith('/')
                 nombre = nombre.rstrip('/')
                 
-                # Ajustar la pila según el nivel
-                while len(path_stack) > nivel + 1:
-                    path_stack.pop()
+                # Debug: mostrar información del nodo
+                logger.info(f"Nombre extraído: [{nombre}]")
+                logger.info(f"Es directorio: {es_directorio}")
                 
-                # Crear el path completo
-                parent = path_stack[-1]
-                current_path = parent['path'] / nombre
+                # Creacion de nuevo nodo
+                nuevo_nodo = Nodo(nombre, es_directorio)
+                nuevo_nodo.nivel = nivel
                 
-                if es_directorio:
-                    # Crear directorio
-                    current_path.mkdir(parents=True, exist_ok=True)
-                    nuevo_dir = {'path': current_path, 'children': {}}
-                    parent['children'][nombre] = nuevo_dir
-                    path_stack.append(nuevo_dir)
-                    logger.info(f"Creado directorio: {current_path}")
+                # Encontrar el padre correcto para este nodo
+                padre = ultimo_nodo.get(nivel - 1, raiz)
+                padre.hijos.append(nuevo_nodo)
+                ultimo_nodo[nivel] = nuevo_nodo
+                
+                logger.info(f"Nodo creado - Nivel: {nivel}, Nombre: {nombre}, " +
+                        f"Es directorio: {es_directorio}, Padre: {padre.nombre}")
+                logger.info("-" * 50)
+            
+            # Creacion de estructura física
+            logger.info("Creando estructura física...")
+            
+            def crear_estructura_fisica(nodo, ruta_actual):
+                ruta_nodo = ruta_actual / nodo.nombre
+                
+                if nodo.es_directorio:
+                    logger.info(f"Creando directorio: {ruta_nodo}")
+                    ruta_nodo.mkdir(parents=True, exist_ok=True)
+                    
+                    # Creacion de hijos
+                    for hijo in nodo.hijos:
+                        crear_estructura_fisica(hijo, ruta_nodo)
                 else:
-                    # Crear archivo
-                    current_path.parent.mkdir(parents=True, exist_ok=True)
-                    current_path.touch()
-                    parent['children'][nombre] = {'path': current_path}
-                    logger.info(f"Creado archivo: {current_path}")
+                    logger.info(f"Creando archivo: {ruta_nodo}")
+                    ruta_nodo.parent.mkdir(parents=True, exist_ok=True)
+                    ruta_nodo.touch()
+            
+            # Creacion de la estructura física empezando desde los hijos de la raíz
+            base_path = Path(base_path)
+            for hijo in raiz.hijos:
+                crear_estructura_fisica(hijo, base_path)
             
             return True
-            
+                
         except Exception as e:
             logger.error(f"Error al crear estructura: {str(e)}")
             raise

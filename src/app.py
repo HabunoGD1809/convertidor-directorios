@@ -8,7 +8,7 @@ from .ui.styles import Styles
 from .ui.components import UIComponents
 from .ui.preferences_dialog import PreferencesDialog
 from .utils.logger import setup_logger
-from .utils.file_handler import FileHandler
+from .utils.file_handler import FileHandler, Nodo
 
 class ConvertidorDirectorios:
     def __init__(self):
@@ -149,7 +149,7 @@ class ConvertidorDirectorios:
                 return
                 
             self.logger.info(f"Creando estructura en: {dest_dir}")
-            FileHandler.crear_estructura(estructura, dest_dir, self.usar_iconos.get())
+            Nodo.crear_estructura(estructura, dest_dir, self.usar_iconos.get())
             self.logger.info("Estructura creada exitosamente")
             self.ui.show_message("✅ Estructura creada correctamente", "success")
             
