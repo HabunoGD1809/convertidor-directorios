@@ -3,4 +3,4 @@ pyperclip
 ttkthemes
 rich
 emoji
-
+pyinstaller

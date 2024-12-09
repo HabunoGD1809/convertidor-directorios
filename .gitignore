@@ -12,3 +12,11 @@
 # con esto es suficiente
 **/__pycache__
 
+# PyInstaller
+build/
+dist/
+*.manifest
+*.spec
+
+# Excepto el archivo app.spec específico que queremos mantener
+!app.spec
