@@ -7,6 +7,75 @@ logger = logging.getLogger('ConvertidorDirectorios')
 
 class FileHandler:
     @staticmethod
+    def _normalize_directory_structure(estructura: str) -> str:
+        """Normaliza una estructura de directorios a un formato válido"""
+        try:
+            # Dividir en líneas y eliminar líneas vacías
+            lines = [line.rstrip() for line in estructura.split('\n') if line.strip()]
+            normalized_lines = []
+            
+            # Detectar el patrón de indentación usado
+            indent_pattern = None
+            for line in lines[1:]:  # Empezar desde la segunda línea
+                spaces = len(line) - len(line.lstrip())
+                if spaces > 0:
+                    indent_pattern = spaces
+                    break
+            
+            if not indent_pattern:
+                indent_pattern = 2  # Valor por defecto si no se detecta
+                
+            # Procesar cada línea
+            for i, line in enumerate(lines):
+                # Calcular nivel actual
+                spaces_before = len(line) - len(line.lstrip())
+                current_level = spaces_before // indent_pattern if indent_pattern else 0
+                
+                # Limpiar la línea de símbolos existentes
+                clean_line = line.lstrip()
+                for symbol in ['├──', '└──', '│', '─', '├─', '└─', '|']:
+                    clean_line = clean_line.replace(symbol, '')
+                clean_line = clean_line.strip()
+                
+                # Determinar si es el último elemento en su nivel
+                is_last = True
+                for next_line in lines[i + 1:]:
+                    next_spaces = len(next_line) - len(next_line.lstrip())
+                    next_level = next_spaces // indent_pattern if indent_pattern else 0
+                    if next_level <= current_level:
+                        is_last = next_level < current_level
+                        break
+                
+                # Construir la nueva línea
+                new_line = ''
+                
+                # Agregar los conectores verticales para niveles anteriores
+                for level in range(current_level):
+                    # Verificar si hay más elementos en este nivel
+                    has_more = False
+                    for next_line in lines[i + 1:]:
+                        next_spaces = len(next_line) - len(next_line.lstrip())
+                        next_level = next_spaces // indent_pattern if indent_pattern else 0
+                        if next_level > level:
+                            has_more = True
+                            break
+                        elif next_level <= level:
+                            break
+                    new_line += '│   ' if has_more else '    '
+                
+                # Agregar el conector apropiado para el nivel actual
+                new_line += '└── ' if is_last else '├── '
+                new_line += clean_line
+                
+                normalized_lines.append(new_line)
+            
+            return '\n'.join(normalized_lines)
+            
+        except Exception as e:
+            logger.error(f"Error normalizando estructura: {str(e)}")
+            raise
+
+    @staticmethod
     def generar_estructura_iconos(dir_path: str, level: int = 0, exclude_patterns=None) -> str:
         """Genera estructura con iconos"""
         if exclude_patterns is None:
@@ -68,13 +137,11 @@ class FileHandler:
                     result.append(f"{current_prefix}{item.name}")
                 elif item.is_dir():
                     result.append(f"{current_prefix}{item.name}/")
-                    # Mejorar la consistencia del prefijo para subdirectorios
                     next_prefix = prefix + ("    " if is_last else "│   ")
                     subdir_content = FileHandler.generar_estructura_arbol(
                         item, level + 1, next_prefix, exclude_patterns
                     )
                     if subdir_content:
-                        # Asegurar que las líneas verticales se alineen correctamente
                         result.append(subdir_content)
                             
             return "\n".join(result)
@@ -86,36 +153,39 @@ class FileHandler:
     def validar_estructura_markdown(estructura: str) -> bool:
         """Valida que la estructura esté en formato markdown válido"""
         try:
-            lineas = estructura.split('\n')
-            nivel_actual = -1
-            nivel_anterior = -1
+            # Si la estructura está vacía, no es válida
+            if not estructura.strip():
+                return False
+
+            lineas = [l for l in estructura.split('\n') if l.strip()]
+            niveles_validos = set()
+            nivel_anterior = 0
             
             for linea in lineas:
-                if not linea.strip():
-                    continue
-                    
                 # Calcular nivel basado en la indentación
                 indentacion = len(re.match(r'^\s*', linea).group())
-                nivel = indentacion // 4
+                nivel = indentacion // 2  # Cambiado de 4 a 2 para ser más flexible
                 
-                # Validar formato básico (debe empezar con ├──, └── o │)
-                if not re.match(r'^(\s*)(├── |└── |│   )', linea):
-                    logger.info(f"Formato inválido en línea: {linea}")
+                # Registrar el nivel como válido
+                niveles_validos.add(nivel)
+                
+                # Permitir cualquier nivel en la primera línea
+                if len(niveles_validos) == 1:
+                    nivel_anterior = nivel
+                    continue
+                
+                # Verificar si hay símbolos de estructura
+                tiene_simbolos = bool(re.search(r'[├└][-─]', linea))
+                
+                # Si la línea no tiene símbolos pero tiene contenido, tratarla como contenido válido
+                if not tiene_simbolos and linea.strip():
+                    continue
+                
+                # La diferencia de nivel no debería ser mayor que la profundidad máxima actual
+                if nivel > max(niveles_validos) + 1:
                     return False
                 
-                # Validar que el nivel no salte más de uno a la vez
-                if nivel > nivel_anterior + 1:
-                    logger.info(f"Salto de nivel inválido: {nivel} > {nivel_anterior + 1}")
-                    return False
-                    
-                # Actualizar niveles
                 nivel_anterior = nivel
-                
-                # Validar el contenido después de los símbolos
-                contenido = re.search(r'[├└]── (.+)$', linea)
-                if contenido and not contenido.group(1).strip():
-                    logger.info("Contenido vacío después de los símbolos")
-                    return False
             
             return True
             
@@ -149,62 +219,62 @@ class FileHandler:
         """Retorna el icono apropiado según la extensión del archivo"""
         extension = extension.lower()
         icons = {
-        # Documentos
-        '.txt': '📝',
-        '.doc': '📘',
-        '.docx': '📘',
-        '.pdf': '📕',
-        '.md': '📋',
-        
-        # Código
-        '.py': '🐍',
-        '.js': '📜',
-        '.html': '🌐',
-        '.css': '🎨',
-        '.json': '📦',
-        '.xml': '📦',
-        '.dart': '💠',
-        '.java': '☕',
-        '.cpp': '⚡',
-        '.c': '⚡',
-        '.php': '🐘',
-        '.rb': '💎',        # Ruby
-        '.swift': '🕊️',    # Swift
-        '.ts': '📘',        # TypeScript
-        '.go': '🐹',        # Go
-        '.rs': '🦀',        # Rust
-        '.kt': '🔷',        # Kotlin
-        '.sql': '🗃️',       # SQL
-        
-        # Imágenes
-        '.jpg': '🖼️',
-        '.jpeg': '🖼️',
-        '.png': '🖼️',
-        '.gif': '🖼️',
-        '.svg': '🖼️',
-        
-        # Otros
-        '.zip': '📦',
-        '.rar': '📦',
-        '.7z': '📦',
-        '.exe': '⚙️',
-        '.bat': '⚙️',
-        '.sh': '⚙️',
-        '.mp3': '🎵',
-        '.wav': '🎵',
-        '.mp4': '🎥',
-        '.avi': '🎥',
-        '.gitignore': '📋',
-        '.env': '🔒',
-        
-        # Configuración y misceláneos
-        '.yml': '⚙️',       # YAML config
-        '.yaml': '⚙️',
-        '.ini': '⚙️',       # Configuración
-        '.log': '🗒️',       # Logs
-        '.db': '🗄️'         # Bases de datos
-    }
-        
+            # Documentos
+            '.txt': '📝',
+            '.doc': '📘',
+            '.docx': '📘',
+            '.pdf': '📕',
+            '.md': '📋',
+            
+            # Código
+            '.py': '🐍',
+            '.js': '📜',
+            '.html': '🌐',
+            '.css': '🎨',
+            '.json': '📦',
+            '.xml': '📦',
+            '.dart': '💠',
+            '.java': '☕',
+            '.cpp': '⚡',
+            '.c': '⚡',
+            '.php': '🐘',
+            '.rb': '💎',        # Ruby
+            '.swift': '🕊️',    # Swift
+            '.ts': '📘',        # TypeScript
+            '.go': '🐹',        # Go
+            '.rs': '🦀',        # Rust
+            '.kt': '🔷',        # Kotlin
+            '.sql': '🗃️',       # SQL
+            
+            # Imágenes
+            '.jpg': '🖼️',
+            '.jpeg': '🖼️',
+            '.png': '🖼️',
+            '.gif': '🖼️',
+            '.svg': '🖼️',
+            
+            # Otros
+            '.zip': '📦',
+            '.rar': '📦',
+            '.7z': '📦',
+            '.exe': '⚙️',
+            '.bat': '⚙️',
+            '.sh': '⚙️',
+            '.mp3': '🎵',
+            '.wav': '🎵',
+            '.mp4': '🎥',
+            '.avi': '🎥',
+            '.gitignore': '📋',
+            '.env': '🔒',
+            
+            # Configuración y misceláneos
+            '.yml': '⚙️',       # YAML config
+            '.yaml': '⚙️',
+            '.ini': '⚙️',       # Configuración
+            '.log': '🗒️',       # Logs
+            '.db': '🗄️'         # Bases de datos
+        }
+            
         return icons.get(extension, '📄')
 
 class Nodo:
