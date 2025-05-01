@@ -1,6 +1,6 @@
 # 🌳 Convertidor de Estructuras de Directorios v2.0.0 🚀
 
-¡Transforma, visualiza y organiza tus proyectos! Esta herramienta te permite convertir estructuras de directorios complejas en representaciones visuales claras, crear nuevas estructuras a partir de texto y mantener tus carpetas limpias.
+Visualiza, crea y limpia estructuras de directorios sin esfuerzo. Esta aplicación convierte árboles de carpetas en texto fácil de entender (¡y viceversa!), te ayuda a generar proyectos desde cero y mantiene tus espacios de trabajo ordenados eliminando archivos basura.
 
 ---
 
@@ -110,6 +110,36 @@
 
 5.  **Copiar/Guardar:** Usa los botones correspondientes.
 6.  **Preferencias:** Cambia tema y fuentes.
+
+---
+
+## 🚀 Futuras Mejoras (Roadmap)
+
+¡Siempre hay espacio para mejorar! Aquí hay algunas ideas y funcionalidades que podrían llegar en futuras versiones:
+
+* **Validación Avanzada al Crear:**
+    * `- [ ]` Ignorar automáticamente líneas de comentario (ej. `# Este es un comentario`) en el texto de la estructura al usar "Crear desde Estructura".
+    * `- [ ]` Permitir definir caracteres o prefijos personalizados a ignorar durante la creación.
+    * `- [ ]` Mejorar la detección de errores de sintaxis en la estructura pegada, idealmente señalando la línea problemática.
+    * `- [ ]` Advertir o prevenir la creación si la estructura de texto contiene iconos (ej. `📁`, `📄`), ya que no representan nombres válidos de archivos/carpetas.
+* **Exportación Flexible:**
+    * `- [ ]` Exportar la estructura generada a otros formatos como JSON, YAML o lista de texto simple indentada.
+* **Importación Versátil:**
+    * `- [ ]` Importar y visualizar estructuras desde formatos como JSON o listas indentadas.
+* **Comparación de Directorios:**
+    * `- [ ]` Opción para cargar dos directorios y resaltar visualmente las diferencias en sus estructuras.
+* **Plantillas de Proyecto:**
+    * `- [ ]` Guardar y cargar plantillas comunes de estructuras de directorios (ej. paquete Python, proyecto web básico).
+* **Interfaz Mejorada:**
+    * `- [ ]` Implementar una vista de árbol interactiva (expandir/colapsar nodos) como alternativa al editor de texto plano.
+    * `- [ ]` Permitir arrastrar y soltar una carpeta sobre la ventana para cargarla directamente.
+* **Búsqueda y Filtrado:**
+    * `- [ ]` Añadir una función de búsqueda dentro de la estructura mostrada en el editor.
+    * `- [ ]` Filtrar la vista por tipo de archivo o nombre.
+* **Personalización Avanzada:**
+    * `- [ ]` Permitir al usuario definir sus propios mapeos de iconos para extensiones de archivo.
+
+¡Las sugerencias y contribuciones son bienvenidas para hacer crecer este proyecto!
 
 ---
 
