@@ -1,6 +1,0 @@
-colorama
-pyperclip
-ttkthemes
-rich
-emoji
-pyinstaller
