@@ -1,36 +1,58 @@
-# 🌳 Convertidor de Estructuras de Directorios v2.0.0
+# 🌳 Convertidor de Estructuras de Directorios v2.0.0 🚀
 
-Una aplicación de escritorio construida con Python y Tkinter que permite visualizar, generar, crear y limpiar estructuras de directorios de manera intuitiva.
+¡Transforma, visualiza y organiza tus proyectos! Esta herramienta te permite convertir estructuras de directorios complejas en representaciones visuales claras, crear nuevas estructuras a partir de texto y mantener tus carpetas limpias.
+
+---
+
+## ✨ Características Destacadas (v2.0.0)
+
+* 📁 **Visualización Inteligente:** Carga cualquier directorio y obtén una vista instantánea.
+* 🎨 **Doble Formato:** Elige entre vista clásica de árbol (`├── └──`) o moderna con iconos (`📄 📁 🐍`).
+* 🚫 **Filtros Flexibles (Generación):** Define patrones (`*.tmp`, `node_modules/`) para **excluir** al visualizar.
+* ✍️ **Editor Integrado:** Modifica o crea estructuras con formato rápido (símbolos, indentación) y Deshacer/Rehacer.
+* 🏗️ **Creación Rápida:** Diseña tu estructura en texto y créala en tu disco duro.
+* 🧹 **Limpieza Profunda (Diálogo Independiente):**
+    * Selecciona cualquier carpeta a limpiar.
+    * Elimina `__pycache__`, `.log`, o patrones personalizados.
+    * **¡Protege tus archivos!** Define patrones a **ignorar** durante la limpieza.
+    * Revisa antes de la **confirmación final**.
+* ⚙️ **Personalización Total:** Tema claro/oscuro y fuentes ajustables.
+* C/G **Portabilidad:** Copia al portapapeles o guarda en archivos `.md` / `.txt`.
+
+---
+
+## 🖼️ Vistas Previas
 
 <table>
   <tr>
-    <td><img src="src/img/previewBlack.png" alt="Vista previa principal" width="500"></td>
-    <td><img src="src/img/previewBlack_cleanDirec.png" alt="Diálogo Limpiar Directorio" width="300"></td>
+    <td align="center">
+      <b>Vista Principal (Tema Oscuro)</b><br>
+      <img src="src/img/v2.0.0/previewBlack.png" alt="Vista principal Tema Oscuro" width="450">
+    </td>
+    <td align="center">
+      <b>Vista Principal (Tema Claro)</b><br>
+      <img src="src/img/v2.0.0/previeWhite.png" alt="Vista principal Tema Claro" width="450">
+    </td>
   </tr>
   <tr>
-    <td align="center"><i>Vista principal (Tema Oscuro)</i></td>
-    <td align="center"><i>Nuevo Diálogo de Limpieza</i></td>
+    <td align="center">
+      <b>Diálogo de Limpieza</b><br>
+      <img src="src/img/v2.0.0/previewBlack_cleanDirec.png" alt="Diálogo Limpiar Directorio" width="450">
+    </td>
+    <td align="center">
+      <b>Ejemplo Estructura (Iconos)</b><br>
+      <img src="src/img/v2.0.0/previewBlackStructure.png" alt="Estructura con Iconos" width="450">
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <b>Vista Previa v1.0.0 (Interfaz Anterior)</b><br>
+      <img src="src/img/v1.0.0/old_preview.png" alt="Vista previa v1.0.0" width="450">
+    </td>
   </tr>
 </table>
 
-## 📋 Características Principales (v2.0.0)
-
-* 📁 **Visualización:** Carga y muestra la estructura de un directorio existente.
-* 🖌️ **Formatos:** Genera la estructura en formato árbol simple (estilo Markdown) o con iconos descriptivos.
-* 🚫 **Filtros de Generación:** Permite especificar patrones (nombres, extensiones, carpetas) para ignorar al generar la estructura visual desde un directorio.
-* 📝 **Editor Integrado:** Edita manualmente la estructura con herramientas de formato (símbolos de árbol, indentación) y atajos de teclado. Soporta deshacer/rehacer (Ctrl+Z/Y).
-* 🏗️ **Creación de Directorios:** Crea la estructura física de carpetas y archivos definida en el editor.
-* 🧹 **Herramienta de Limpieza:**
-    * Abre un diálogo independiente para limpiar un directorio seleccionado.
-    * Permite seleccionar el directorio a limpiar desde el diálogo.
-    * Opciones para eliminar directorios `__pycache__`.
-    * Opciones para eliminar archivos `.log`.
-    * Permite especificar patrones personalizados para eliminar.
-    * Permite especificar patrones para **ignorar** durante la limpieza (protege archivos/carpetas).
-    * Muestra una confirmación detallada antes de la eliminación permanente.
-* 🎨 **Personalización:** Tema claro/oscuro y configuración de fuentes para la UI y el editor.
-* 💾 **Guardar/Cargar:** Guarda la estructura generada o editada en archivos `.md` o `.txt`.
-* 📋 **Portapapeles:** Copia la estructura actual al portapapeles.
+---
 
 ## 🚀 Instalación
 
@@ -49,10 +71,8 @@ Una aplicación de escritorio construida con Python y Tkinter que permite visual
 2.  (Recomendado) Crea y activa un entorno virtual:
     ```bash
     python -m venv ConvDirEnv
-    # Windows
-    .\ConvDirEnv\Scripts\activate
-    # macOS/Linux
-    source ConvDirEnv/bin/activate
+    # Windows: .\ConvDirEnv\Scripts\activate
+    # macOS/Linux: source ConvDirEnv/bin/activate
     ```
 3.  Instala las dependencias:
     ```bash
@@ -63,12 +83,14 @@ Una aplicación de escritorio construida con Python y Tkinter que permite visual
     python main.py
     ```
 
+---
+
 ## 🛠️ Uso
 
 1.  **Cargar y Visualizar:**
     * (Opcional) Escribe patrones a ignorar en "Ignorar al generar".
     * Clic en "📂 Cargar Directorio" y selecciona la carpeta.
-    * Usa el checkbox "Usar iconos" para cambiar vista.
+    * Usa "Usar iconos" para cambiar vista.
 
 2.  **Editar/Crear Estructura Manual:**
     * Pega o escribe en el editor.
@@ -89,6 +111,8 @@ Una aplicación de escritorio construida con Python y Tkinter que permite visual
 5.  **Copiar/Guardar:** Usa los botones correspondientes.
 6.  **Preferencias:** Cambia tema y fuentes.
 
+---
+
 ## 🤝 Contribuir
 
 Fork -> Branch -> Commit -> Push -> Pull Request. Sigue PEP 8.
@@ -101,6 +125,6 @@ MIT License.
 
 * Python, Tkinter, ttkthemes Community.
 
-## 📬 Contacto
+## 📫 Contacto
 
 HabunoGD1809 - [@Franklin_1809](https://x.com/Franklin_1809) 🐦 - franklinjoel1809@gmail.com 📧
