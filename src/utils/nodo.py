@@ -16,7 +16,9 @@ class Nodo:
         self.padre: Nodo | None = None
 
     def agregar_hijo(self, hijo: Nodo):
-        """Agrega un nodo hijo."""
+        """Agrega un nodo hijo y se asegura que el nodo actual es un directorio."""
+        # FIX: Si un nodo tiene hijos, DEBE ser un directorio.
+        self.es_directorio = True
         hijo.padre = self
         self.hijos.append(hijo)
 
@@ -32,131 +34,122 @@ class Nodo:
         Retorna (nivel, nombre, es_directorio) o None si no es válida.
         """
         linea = linea.rstrip()
-        match = re.match(r'^([│\s]*(?:[├└]──\s*))?(.*)', linea)
+        match = re.match(r'^([│\s]*(?:[├└]──\s*)?)(.*)', linea)
         if not match:
-             # Check if it's a root node (no prefix)
-             if re.match(r'^[📁📄]?\s*[^│├└]+', linea.lstrip()):
-                  nombre_limpio = linea.lstrip()
-                  es_directorio = nombre_limpio.endswith('/') or nombre_limpio.startswith('📁')
-                  nombre_limpio = nombre_limpio.rstrip('/').lstrip('📁📄 ').strip()
-                  # Ensure name is not empty after stripping icons etc.
-                  return (0, nombre_limpio, es_directorio) if nombre_limpio else None
-             return None # Not a recognized format
+            return None
 
-        prefijo_simbolo = match.group(1) or ''
-        nombre_linea = match.group(2).strip()
-        prefijo_solo = re.match(r'^([│\s]*)', prefijo_simbolo).group(1) or ''
-        # Calculate level based on visual structure (more robust than just spaces)
-        nivel = prefijo_solo.count('│') + prefijo_solo.count('   ') # Count pipes and 3-space groups
-        # Fallback or adjustment if using pure spaces (e.g., 4 spaces per level)
-        if nivel == 0 and prefijo_solo.startswith('    '):
-            nivel = len(prefijo_solo) // 4
+        prefijo_completo = match.group(1) or ''
+        nombre_linea = match.group(2)
 
+        # Cálculo de nivel basado en la estructura visual
+        indent_str = re.sub(r'[├└]──.*', '', prefijo_completo)
+        nivel = indent_str.count('│') + indent_str.count('    ') + indent_str.count('   ')
 
-        nombre_limpio = nombre_linea
+        # Heurística inicial para el tipo (se corregirá después si tiene hijos)
+        nombre_limpio = nombre_linea.strip()
         es_directorio = nombre_limpio.endswith('/')
-        # Deduce type from icon if present and '/' is missing
+
         if nombre_limpio.startswith(('📁 ', '📄 ')):
             icon = nombre_limpio[:2]
             nombre_limpio = nombre_limpio[2:]
-            if not es_directorio: # Only override if '/' is not present
+            if not es_directorio:
                  es_directorio = icon == '📁 '
+        # Heurística: si no tiene extensión, es probable que sea un directorio.
+        # Esto ayuda a manejar casos como 'config' sin una '/' al final.
+        elif '.' not in Path(nombre_limpio).name:
+            es_directorio = True
+        
+        # Un archivo puede no tener extensión, la lógica de 'agregar_hijo' lo corregirá si es necesario.
+        # Si algo como 'main.dart' se marca como directorio, lo siguiente lo corregirá
+        if '.' in Path(nombre_limpio).name and not nombre_limpio.endswith('/'):
+            es_directorio = False
 
-        nombre_limpio = nombre_limpio.rstrip('/') # Remove trailing slash if dir
-        nombre_limpio = nombre_limpio.strip() # Clean extra whitespace
+        nombre_limpio = nombre_limpio.rstrip('/').strip()
 
         if not nombre_limpio:
-            logger.warning(f"Línea parseada sin nombre: '{linea}' -> Prefijo: '{prefijo_simbolo}', Nombre Línea: '{nombre_linea}'")
-            return None # Ignore lines that result in an empty name
+            logger.warning(f"Línea parseada sin nombre: '{linea}'")
+            return None
 
         return nivel, nombre_limpio, es_directorio
-
 
     @staticmethod
     def crear_desde_texto(estructura: str, base_path_str: str) -> Nodo | None:
         """
         Crea la estructura de directorios física a partir del texto.
-        Retorna el nodo raíz lógico de la estructura creada o None si falla.
+        FIX: Reelaborado en un proceso de dos pasadas para mayor robustez.
         """
         if not estructura.strip():
             raise ValueError("La estructura de texto para crear está vacía.")
 
         base_path = Path(base_path_str)
         if not base_path.is_dir():
-             # Option: Create base_path if it doesn't exist? Or raise error?
-             # Let's raise error for now, assuming user selected existing base.
              logger.error(f"El directorio base para la creación no existe: {base_path}")
              raise FileNotFoundError(f"El directorio base seleccionado no existe: {base_path_str}")
 
+        # --- PASO 1: Construir el árbol lógico en memoria ---
         lineas = [l for l in estructura.split('\n') if l.strip()]
-        # Root node represents the base_path selected by the user
         raiz = Nodo(base_path.name, es_directorio=True, nivel=-1)
-        ultimo_nodo_por_nivel = {-1: raiz} # Tracks the last node created at each level
+        ultimo_nodo_por_nivel = {-1: raiz}
         logger.info(f"Iniciando creación de estructura DENTRO de: {base_path}")
+        logger.info("Paso 1: Construyendo árbol lógico...")
+
+        for i, linea in enumerate(lineas):
+            parsed = Nodo._parse_linea(linea)
+            if not parsed:
+                logger.warning(f"Línea ignorada (formato no reconocido): {i+1} -> '{linea}'")
+                continue
+
+            nivel, nombre, es_directorio = parsed
+            logger.debug(f"Parseado L{i+1}: Nivel={nivel}, Nombre='{nombre}', Dir={es_directorio} (inicial)")
+
+            nivel_padre = nivel - 1
+            while nivel_padre not in ultimo_nodo_por_nivel and nivel_padre >= -1:
+                nivel_padre -= 1
+
+            if nivel_padre < -1:
+                 logger.error(f"No se pudo encontrar un nodo padre válido para la línea {i+1} (Nivel {nivel}): '{linea}'. Saltando.")
+                 continue
+
+            padre = ultimo_nodo_por_nivel[nivel_padre]
+            nuevo_nodo = Nodo(nombre, es_directorio, nivel)
+            padre.agregar_hijo(nuevo_nodo) # Esto corrige el flag 'es_directorio' del padre si es necesario
+            ultimo_nodo_por_nivel[nivel] = nuevo_nodo
+
+        logger.info("Árbol lógico construido. Iniciando creación física.")
+
+        # --- PASO 2: Recorrer el árbol lógico y crear la estructura física ---
+        def crear_recursivo(nodo: Nodo, ruta_padre_fisico: Path):
+            """Función anidada para crear archivos/directorios recursivamente."""
+            # No procesar el nodo raíz, que representa el directorio base ya existente
+            if nodo == raiz:
+                for hijo in nodo.hijos:
+                    crear_recursivo(hijo, ruta_padre_fisico)
+                return
+
+            ruta_actual = ruta_padre_fisico / nodo.nombre
+            try:
+                if nodo.es_directorio:
+                    logger.debug(f"  -> Creando Directorio: {ruta_actual}")
+                    ruta_actual.mkdir(exist_ok=True)
+                    for hijo in nodo.hijos:
+                        crear_recursivo(hijo, ruta_actual)
+                else:
+                    logger.debug(f"  -> Creando Archivo: {ruta_actual}")
+                    # El directorio padre ya ha sido creado por la llamada recursiva anterior
+                    ruta_actual.touch(exist_ok=True)
+            except Exception as e:
+                logger.error(f"Error del sistema de archivos al procesar {ruta_actual}: {e}", exc_info=True)
+                raise # Re-lanzar para que el bloque principal lo capture
 
         try:
-            for i, linea in enumerate(lineas):
-                parsed = Nodo._parse_linea(linea)
-                if not parsed:
-                    logger.warning(f"Línea ignorada (formato no reconocido): {i+1} -> '{linea}'")
-                    continue
-
-                nivel, nombre, es_directorio = parsed
-                logger.debug(f"Parseado L{i+1}: Nivel={nivel}, Nombre='{nombre}', Dir={es_directorio}")
-
-                # Find the correct parent node based on level
-                nivel_padre = nivel - 1
-                while nivel_padre not in ultimo_nodo_por_nivel and nivel_padre >= -1:
-                    # If exact parent level doesn't exist, go up until a valid parent is found
-                    nivel_padre -= 1
-
-                if nivel_padre < -1:
-                     # This shouldn't happen if level 0 is parsed correctly relative to root (-1)
-                     logger.error(f"No se pudo encontrar un nodo padre válido para la línea {i+1} (Nivel {nivel}): '{linea}'. Saltando.")
-                     continue
-
-                padre = ultimo_nodo_por_nivel[nivel_padre]
-
-                # Create the new node object
-                nuevo_nodo = Nodo(nombre, es_directorio, nivel)
-                padre.agregar_hijo(nuevo_nodo)
-                # Register this node as the last one created at its level
-                ultimo_nodo_por_nivel[nivel] = nuevo_nodo
-
-                # Determine the actual file system path for the new node
-                # Build path relative to the base_path by joining names from root
-                ruta_relativa_parts = [n.nombre for n in nuevo_nodo.ruta_desde(raiz)[1:]] # Get names excluding logical root
-                ruta_nodo_absoluta = base_path.joinpath(*ruta_relativa_parts) # Join parts to the actual base path
-
-                logger.debug(f"  -> Creando item físico: {ruta_nodo_absoluta} (Padre lógico: {padre.nombre} @ Nivel {padre.nivel})")
-
-                # Create the directory or file on the filesystem
-                try:
-                     if es_directorio:
-                         ruta_nodo_absoluta.mkdir(parents=True, exist_ok=True)
-                     else:
-                         # Ensure parent directory exists first
-                         ruta_nodo_absoluta.parent.mkdir(parents=True, exist_ok=True)
-                         # Create empty file
-                         ruta_nodo_absoluta.touch(exist_ok=True)
-                except PermissionError as pe:
-                     logger.error(f"Permiso denegado al crear item físico: {ruta_nodo_absoluta}. Error: {pe}")
-                     # Stop creation process on critical errors like permissions
-                     raise
-                except Exception as fs_error:
-                     logger.error(f"Error del sistema de archivos al crear {ruta_nodo_absoluta}: {fs_error}", exc_info=True)
-                     # Stop creation process on other filesystem errors
-                     raise
-
-            logger.info(f"Creación de estructura física completada dentro de {base_path}.")
-            return raiz # Return the logical root node representing the created structure
-
+            crear_recursivo(raiz, base_path)
+            logger.info(f"Creación de estructura física completada.")
+            return raiz
         except Exception as e:
-            # Catch any exception during the loop (like re-raised PermissionError)
-            logger.error(f"Error fatal durante la creación desde texto: {str(e)}", exc_info=True)
-            # Indicate failure by returning None
+            # Captura errores durante la creación física recursiva
+            logger.error(f"Error fatal durante la creación física desde texto: {str(e)}", exc_info=True)
+            # Falla y retorna None
             return None
-
 
     def ruta_desde(self, ancestro: Nodo) -> list[Nodo]:
         """Retorna la lista de nodos desde el ancestro especificado hasta este nodo."""
@@ -164,10 +157,7 @@ class Nodo:
         nodo_actual: Nodo | None = self
         while nodo_actual and nodo_actual != ancestro:
             ruta.append(nodo_actual)
-            nodo_actual = nodo_actual.padre # Move up to the parent
-        # Include ancestor if found
+            nodo_actual = nodo_actual.padre
         if nodo_actual == ancestro:
              ruta.append(ancestro)
-        # If ancestor was not found (e.g., different trees), path will be from self up to root
-        # Return reversed list so it's from ancestor -> self
         return ruta[::-1]

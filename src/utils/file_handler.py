@@ -123,16 +123,42 @@ class FileHandler:
 
     @staticmethod
     def validar_estructura_para_creacion(estructura: str) -> tuple[bool, str]:
-        if not estructura.strip(): return False, "Estructura vacía."
-        lines = [line for line in estructura.split('\n') if line.strip()]; last_indent = -1
-        for i, line in enumerate(lines):
-            stripped = line.lstrip(); current_indent = len(line) - len(stripped)
-            is_root = current_indent == 0; has_sym = stripped.startswith(('├──', '└──')); starts_name = re.match(r'^[📁📄a-zA-Z0-9]', stripped)
-            if not is_root and not has_sym and not line.startswith('│') and stripped != '│': return False, f"Línea {i+1}: Formato no reconocido."
+        """
+        Valida si el formato del texto de la estructura es adecuado para la creación.
+        Versión corregida para manejar espacios no separables y lógica de indentación.
+        """
+        # FIX: Reemplazar espacios no separables (nbsp) por espacios normales
+        estructura_corregida = estructura.replace('\u00a0', ' ')
+
+        if not estructura_corregida.strip():
+            return False, "Estructura vacía."
+
+        lineas = [line for line in estructura_corregida.split('\n') if line.strip()]
+        last_indent = -1
+
+        for i, line in enumerate(lineas):
+            stripped = line.lstrip()
+            current_indent = len(line) - len(stripped)
+
+            if not stripped:
+                continue
+
+            es_linea_valida = (
+                stripped.startswith(('├──', '└──', '│')) or
+                re.match(r'^[📁📄]?\s*[^│├└]', stripped) is not None
+            )
+
+            if not es_linea_valida:
+                return False, f"Línea {i+1}: Formato no reconocido o inválido ('{line.strip()}')."
+
+            # Comprobar saltos de indentación excesivos
             if i > 0:
                 diff = current_indent - last_indent
-                if diff > 0 and current_indent > last_indent + 6: return False, f"Línea {i+1}: Indentación excesiva."
+                if diff > 0 and current_indent > last_indent + 6:
+                    return False, f"Línea {i+1}: Indentación excesiva o inconsistente."
+
             last_indent = current_indent
+
         return True, "OK"
 
     @staticmethod
