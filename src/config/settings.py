@@ -7,12 +7,14 @@ class Settings:
         self.config_file = 'preferencias.json'
         self.default_settings = {
             'usar_iconos': True,
-            'theme': 'dark',  # 'dark' o 'light'
-            'font_family': 'Consolas',  # Fuente para el área de preview
-            'font_size': 11,  # Tamaño de fuente para el preview
-            'ui_font_family': 'Segoe UI',  # Fuente para la UI
-            'ui_font_size': 10,  # Tamaño de fuente para la UI
+            'theme': 'dark',
+            'font_family': 'Consolas',
+            'font_size': 11,
+            'ui_font_family': 'Segoe UI',
+            'ui_font_size': 10,
             'window_size': '1000x700',
+            'guardar_patrones': True,
+            'ignore_patterns': ['.git', '.svn', '.hg', '__pycache__', '.pytest_cache', '.venv', 'venv', 'env', 'node_modules', 'dist', 'build', '*.pyc', '*.pyo', '*.log', '.DS_Store'],
             'ultima_actualizacion': datetime.now().isoformat()
         }
         self.current_settings = {}
@@ -24,7 +26,6 @@ class Settings:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     saved_settings = json.load(f)
-                    # Combinar configuraciones guardadas con las predeterminadas
                     self.current_settings = {**self.default_settings, **saved_settings}
             else:
                 self.current_settings = self.default_settings.copy()

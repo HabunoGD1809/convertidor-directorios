@@ -4,13 +4,15 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import os
 import logging
+from typing import Callable
 
 from src.utils.file_handler import FileHandler
+from .custom_widgets import TagEntry
 
 logger = logging.getLogger('ConvertidorDirectorios')
 
 class DeleteDialog(tk.Toplevel):
-    def __init__(self, parent, initial_dir: str | None, execute_callback: callable, styles):
+    def __init__(self, parent, initial_dir: str | None, execute_callback: Callable, styles):
         super().__init__(parent)
         self.selected_dir_var = tk.StringVar(value=initial_dir or "")
         self.execute_callback = execute_callback
@@ -32,19 +34,21 @@ class DeleteDialog(tk.Toplevel):
         self.wait_window(self)
 
     def _setup_ui(self):
-        """Configura la interfaz del diálogo de limpieza."""
         main_frame = ttk.Frame(self, padding="20", style='TFrame')
-        main_frame.pack(fill=tk.BOTH, expand=True) # Main frame fills the dialog
+        main_frame.pack(fill=tk.BOTH, expand=True) 
 
-        # --- Pack top/middle content first ---
         target_frame = ttk.LabelFrame(main_frame, text="Directorio a Limpiar", padding="10", style='TLabelframe')
-        target_frame.pack(fill=tk.X, pady=(0, 10)) # Reduced bottom padding
+        target_frame.pack(fill=tk.X, pady=(0, 10)) 
+
+        ui_font_family = self.styles.settings.get('ui_font_family') or 'Segoe UI'
+        ui_font_size = self.styles.settings.get('ui_font_size') or 10
+        entry_font = (ui_font_family, ui_font_size)
 
         self.dir_entry = ttk.Entry(
             target_frame,
             textvariable=self.selected_dir_var,
             style='TEntry',
-            font=(self.styles.settings.get('ui_font_family'), self.styles.settings.get('ui_font_size'))
+            font=entry_font
         )
         self.dir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
 
@@ -54,44 +58,41 @@ class DeleteDialog(tk.Toplevel):
         browse_button.pack(side=tk.LEFT)
 
         options_frame = ttk.LabelFrame(main_frame, text="Opciones de Limpieza (Qué eliminar)", padding="10", style='TLabelframe')
-        options_frame.pack(fill=tk.X, pady=(0, 10)) # Reduced bottom padding
-        checkbox_frame = ttk.Frame(options_frame, style='TFrame'); checkbox_frame.pack(fill=tk.X, pady=(0, 5))
+        options_frame.pack(fill=tk.X, pady=(0, 10)) 
+        
+        checkbox_frame = ttk.Frame(options_frame, style='TFrame')
+        checkbox_frame.pack(fill=tk.X, pady=(0, 5))
         ttk.Checkbutton(checkbox_frame, text="`__pycache__`", variable=self.limpiar_pycache_var, style='TCheckbutton').pack(side=tk.LEFT, padx=(0, 20))
         ttk.Checkbutton(checkbox_frame, text="`.log`", variable=self.limpiar_logs_var, style='TCheckbutton').pack(side=tk.LEFT)
-        custom_frame = ttk.Frame(options_frame, style='TFrame'); custom_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        custom_frame = ttk.Frame(options_frame, style='TFrame')
+        custom_frame.pack(fill=tk.X, pady=(5, 0))
         ttk.Label(custom_frame, text="Patrones personalizados:", style='Custom.TLabel').pack(side=tk.LEFT, padx=(0, 10))
-        entry_font = (self.styles.settings.get('ui_font_family'), self.styles.settings.get('ui_font_size'))
-        ttk.Entry(custom_frame, textvariable=self.patrones_personalizados_var, width=35, font=entry_font).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        custom_patterns_entry = TagEntry(custom_frame, self.patrones_personalizados_var, self.styles)
+        custom_patterns_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         ignore_frame = ttk.LabelFrame(main_frame, text="Opciones de Exclusión (Qué NO eliminar)", padding="10", style='TLabelframe')
-        ignore_frame.pack(fill=tk.X, pady=(0, 15)) # Keep padding below ignore frame
-        ttk.Label(ignore_frame, text="Ignorar patrones (coma-separado):", style='Custom.TLabel').pack(side=tk.LEFT, padx=(0, 10))
-        ignore_entry = ttk.Entry(
-            ignore_frame, textvariable=self.ignore_patterns_var, font=entry_font, width=40
-        )
+        ignore_frame.pack(fill=tk.X, pady=(0, 15)) 
+        ttk.Label(ignore_frame, text="Ignorar patrones:", style='Custom.TLabel').pack(side=tk.LEFT, padx=(0, 10))
+        
+        ignore_entry = TagEntry(ignore_frame, self.ignore_patterns_var, self.styles)
         ignore_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # --- Pack Action Buttons LAST, using side=BOTTOM ---
         button_frame = ttk.Frame(main_frame, style='TFrame')
-        # Pack this frame at the bottom of main_frame
         button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
 
-        # Pack buttons inside the button_frame (order matters for side=tk.RIGHT)
-        # Cancel button packed last appears furthest right
         self.cancel_button = ttk.Button(
             button_frame, text="Cancelar", style='Custom.TButton', command=self._on_cancel
         )
-        self.cancel_button.pack(side=tk.RIGHT, padx=(5, 0)) # Padding on the left
+        self.cancel_button.pack(side=tk.RIGHT, padx=(5, 0))
 
-        # Find button packed before Cancel appears to its left
         self.find_button = ttk.Button(
-            button_frame, text="Buscar y Confirmar Eliminación...", style='Custom.TButton', command=self._buscar_y_confirmar
+            button_frame, text="Buscar y Confirmar...", style='Custom.TButton', command=self._buscar_y_confirmar
         )
-        self.find_button.pack(side=tk.RIGHT, padx=(0, 5)) # Padding on the right
-
+        self.find_button.pack(side=tk.RIGHT, padx=(0, 5))
 
     def _select_directory(self):
-        """Abre el diálogo para seleccionar un directorio."""
         initial_dir = self.selected_dir_var.get() or os.getcwd()
         dir_path = filedialog.askdirectory(
             title="Seleccionar Directorio para Limpiar",
@@ -100,60 +101,45 @@ class DeleteDialog(tk.Toplevel):
             )
         if dir_path:
             self.selected_dir_var.set(dir_path)
-            logger.info(f"Directorio seleccionado para limpieza: {dir_path}")
-
 
     def _buscar_y_confirmar(self):
-        """Busca archivos, aplica ignorados, muestra confirmación y ejecuta si se confirma."""
         target_dir = self.selected_dir_var.get().strip()
         if not target_dir or not os.path.isdir(target_dir):
-            messagebox.showerror("Error", "Selecciona un directorio válido para limpiar.", parent=self)
+            messagebox.showerror("Error", "Selecciona un directorio válido.", parent=self)
             return
 
         clean_pycache = self.limpiar_pycache_var.get()
         clean_logs = self.limpiar_logs_var.get()
         custom_patterns = [p.strip() for p in self.patrones_personalizados_var.get().split(',') if p.strip()]
         ignore_patterns = [p.strip() for p in self.ignore_patterns_var.get().split(',') if p.strip()]
-        logger.debug(f"Patrones ignorados limpieza: {ignore_patterns}")
 
         if not clean_pycache and not clean_logs and not custom_patterns:
             messagebox.showinfo("Sin Opciones", "No se seleccionaron opciones de qué eliminar.", parent=self)
             return
 
         try:
-            logger.info(f"Buscando en: {target_dir}, ignorando: {ignore_patterns}")
             items_to_delete = FileHandler.encontrar_archivos_para_limpiar(
                 target_dir, clean_pycache, clean_logs, custom_patterns, ignore_patterns=ignore_patterns
             )
 
             if not items_to_delete:
-                messagebox.showinfo("Limpieza", "No se encontraron elementos (respetando ignorados).", parent=self)
-                logger.info("No elementos a limpiar.")
+                messagebox.showinfo("Limpieza", "No se encontraron elementos.", parent=self)
                 return
 
-            confirm_message = f"Eliminar {len(items_to_delete)} elementos de '{os.path.basename(target_dir)}' (respetando ignorados):\n\n"
+            confirm_message = f"Eliminar {len(items_to_delete)} elementos:\n\n"
             preview = [os.path.relpath(item, target_dir) for item in items_to_delete[:15]]
             confirm_message += "\n".join(f"- {p}" for p in preview)
             if len(items_to_delete) > 15: confirm_message += f"\n... y {len(items_to_delete) - 15} más."
             confirm_message += "\n\n⚠️ ¡ESTA ACCIÓN NO SE PUEDE DESHACER! ⚠️\n\n¿Continuar?"
-            confirm = messagebox.askyesno("Confirmar Limpieza PERMANENTE", confirm_message, icon='warning', parent=self)
+            confirm = messagebox.askyesno("Confirmar Limpieza", confirm_message, icon='warning', parent=self)
 
             if confirm:
-                logger.info("Usuario confirmó eliminación.")
-                options = {'clean_pycache': clean_pycache, 'clean_logs': clean_logs, 'custom': custom_patterns}
+                options = {'clean_pycache': clean_pycache, 'clean_logs': clean_logs, 'custom': custom_patterns, 'ignore_patterns': ignore_patterns}
                 self.execute_callback(target_dir, options)
                 self.destroy()
-            else:
-                logger.info("Usuario canceló eliminación.")
 
-        except PermissionError as pe:
-             logger.error(f"Error permisos buscando en {target_dir}: {pe}", exc_info=True)
-             messagebox.showerror("Error", f"Error permisos buscando en:\n{target_dir}", parent=self)
         except Exception as e:
-            logger.error(f"Error buscando/confirmando limpieza: {e}", exc_info=True)
             messagebox.showerror("Error", f"Ocurrió un error:\n{e}", parent=self)
 
     def _on_cancel(self):
-        """Cierra el diálogo sin hacer nada."""
-        logger.debug("Diálogo limpieza cancelado.")
         self.destroy()

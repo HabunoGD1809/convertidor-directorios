@@ -1,23 +1,29 @@
-# 🌳 Convertidor de Estructuras de Directorios v2.0.0 🚀
+# 🌳 Convertidor de Estructuras de Directorios v2.2.0 🚀
 
 Visualiza, crea y limpia estructuras de directorios sin esfuerzo. Esta aplicación convierte árboles de carpetas en texto fácil de entender (¡y viceversa!), te ayuda a generar proyectos desde cero y mantiene tus espacios de trabajo ordenados eliminando archivos basura.
 
 ---
 
-## ✨ Características Destacadas (v2.0.0)
+## ✨ Características Destacadas (v2.2.0)
 
 * 📁 **Visualización Inteligente:** Carga cualquier directorio y obtén una vista instantánea.
 * 🎨 **Doble Formato:** Elige entre vista clásica de árbol (`├── └──`) o moderna con iconos (`📄 📁 🐍`).
-* 🚫 **Filtros Flexibles (Generación):** Define patrones (`*.tmp`, `node_modules/`) para **excluir** al visualizar.
-* ✍️ **Editor Integrado:** Modifica o crea estructuras con formato rápido (símbolos, indentación) y Deshacer/Rehacer.
-* 🏗️ **Creación Rápida:** Diseña tu estructura en texto y créala en tu disco duro.
+* 🚫 **Filtros Flexibles y Persistentes:** Define patrones (`*.tmp`, `node_modules/`) para **excluir** al visualizar. Ahora puedes **guardarlos como predeterminados** para futuras sesiones.
+* 🔍 **Buscador Integrado (NUEVO):** Presiona `Ctrl + F` dentro del editor para buscar rápidamente cualquier archivo o carpeta en estructuras gigantes.
+* ✍️ **Editor Inteligente:** Modifica estructuras con botones rápidos o atajos (`Alt+U/E/L`).
+* ↘️ **Pegado Anidado (NUEVO):** Usa `Alt + V` (o el botón "Pegar Dentro") para pegar una estructura del portapapeles y el sistema calculará automáticamente la indentación correcta para anidarla donde esté tu cursor.
+* 🧹 **Limpieza de Comentarios (NUEVO):** Usa el botón "🧹 Sin #" para eliminar automáticamente todos los comentarios de una estructura pegada, sin romper el árbol.
+* 🏗️ **Motor de Creación Robusto (NUEVO):**
+  * Diseña tu estructura en texto y créala en tu disco duro.
+  * Inteligencia para diferenciar entre archivos sin extensión (`Dockerfile`) y carpetas, basándose en la jerarquía.
+  * Ignora automáticamente los comentarios en línea al crear las carpetas físicas.
 * 🧹 **Limpieza Profunda (Diálogo Independiente):**
     * Selecciona cualquier carpeta a limpiar.
     * Elimina `__pycache__`, `.log`, o patrones personalizados.
     * **¡Protege tus archivos!** Define patrones a **ignorar** durante la limpieza.
     * Revisa antes de la **confirmación final**.
 * ⚙️ **Personalización Total:** Tema claro/oscuro y fuentes ajustables.
-* C/G **Portabilidad:** Copia al portapapeles o guarda en archivos `.md` / `.txt`.
+* 📋 **Portabilidad:** Copia al portapapeles o guarda en archivos `.md` / `.txt`.
 
 ---
 
@@ -88,28 +94,29 @@ Visualiza, crea y limpia estructuras de directorios sin esfuerzo. Esta aplicaci�
 ## 🛠️ Uso
 
 1.  **Cargar y Visualizar:**
-    * (Opcional) Escribe patrones a ignorar en "Ignorar al generar".
+    * (Opcional) Escribe patrones a ignorar en "Ignorar al generar". Marca "Guardar como predeterminados" si quieres conservarlos.
     * Clic en "📂 Cargar Directorio" y selecciona la carpeta.
     * Usa "Usar iconos" para cambiar vista.
 
-2.  **Editar/Crear Estructura Manual:**
+2.  **Navegación y Búsqueda:**
+    * Presiona `Ctrl + F` en el editor para buscar un archivo específico.
+
+3.  **Editar/Crear Estructura Manual:**
     * Pega o escribe en el editor.
-    * Usa botones (`└──`, `├──`, `│`, `Indent`, `Unindent`) o atajos (`Alt+U/E/L`, `Tab`, `Shift+Tab`).
+    * Usa `Alt + V` para pegar una estructura anidada dentro de la carpeta actual.
+    * Usa "🧹 Sin #" para limpiar comentarios.
 
-3.  **Crear Directorios:**
+4.  **Crear Directorios Físicos:**
     * Clic en "🔨 Crear desde Estructura".
-    * Selecciona directorio padre y confirma.
+    * Selecciona directorio padre y confirma. (El sistema ignorará comentarios e íconos automáticamente).
 
-4.  **Limpiar Directorio:**
+5.  **Limpiar Directorio:**
     * Clic en "🧹 Limpiar Directorio".
-    * En el diálogo, clic en "Seleccionar..." y elige la carpeta.
-    * Marca/escribe qué **eliminar** (`__pycache__`, `.log`, personalizados).
-    * (Opcional) Escribe qué **ignorar**.
-    * Clic en "Buscar y Confirmar Eliminación...".
+    * En el diálogo, elige la carpeta, marca qué **eliminar** y qué **ignorar**.
     * Revisa la lista y confirma la eliminación permanente.
 
-5.  **Copiar/Guardar:** Usa los botones correspondientes.
-6.  **Preferencias:** Cambia tema y fuentes.
+6.  **Copiar/Guardar:** Usa los botones correspondientes.
+7.  **Preferencias:** Cambia tema y fuentes.
 
 ---
 
@@ -117,11 +124,6 @@ Visualiza, crea y limpia estructuras de directorios sin esfuerzo. Esta aplicaci�
 
 ¡Siempre hay espacio para mejorar! Aquí hay algunas ideas y funcionalidades que podrían llegar en futuras versiones:
 
-* **Validación Avanzada al Crear:**
-    * `- [ ]` Ignorar automáticamente líneas de comentario (ej. `# Este es un comentario`) en el texto de la estructura al usar "Crear desde Estructura".
-    * `- [ ]` Permitir definir caracteres o prefijos personalizados a ignorar durante la creación.
-    * `- [ ]` Mejorar la detección de errores de sintaxis en la estructura pegada, idealmente señalando la línea problemática.
-    * `- [ ]` Advertir o prevenir la creación si la estructura de texto contiene iconos (ej. `📁`, `📄`), ya que no representan nombres válidos de archivos/carpetas.
 * **Exportación Flexible:**
     * `- [ ]` Exportar la estructura generada a otros formatos como JSON, YAML o lista de texto simple indentada.
 * **Importación Versátil:**
@@ -133,9 +135,6 @@ Visualiza, crea y limpia estructuras de directorios sin esfuerzo. Esta aplicaci�
 * **Interfaz Mejorada:**
     * `- [ ]` Implementar una vista de árbol interactiva (expandir/colapsar nodos) como alternativa al editor de texto plano.
     * `- [ ]` Permitir arrastrar y soltar una carpeta sobre la ventana para cargarla directamente.
-* **Búsqueda y Filtrado:**
-    * `- [ ]` Añadir una función de búsqueda dentro de la estructura mostrada en el editor.
-    * `- [ ]` Filtrar la vista por tipo de archivo o nombre.
 * **Personalización Avanzada:**
     * `- [ ]` Permitir al usuario definir sus propios mapeos de iconos para extensiones de archivo.
 
